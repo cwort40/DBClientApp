@@ -1,0 +1,47 @@
+* {
+    -fx-font-family: sans-serif;
+    -fx-base: #C0C0C0;
+    -fx-text-fill: blue;
+}
+
+Label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+TableView {
+    -fx-base: #C0C0C0;
+    -fx-control-inner-background: #C0C0C0;
+    -fx-table-cell-border-color: transparent;
+    -fx-accent: blue;
+    -fx-table-view-border-color: black;
+    -fx-table-header-border-color: black;
+    -fx-border-radius: 5px;
+    -fx-border-color: black;
+    -fx-font-size: 12px;
+}
+
+TableColumn {
+    -fx-alignment: center;
+    -fx-border-color: black;
+}
+
+RadioButton {
+    -fx-base: #C0C0C0;
+    -fx-accent: blue;
+    -fx-border-color: black;
+    -fx-border-radius: 5px;
+    -fx-padding: 5px 10px;
+}
+
+Button {
+    -fx-base: #C0C0C0;
+    -fx-accent: blue;
+    -fx-border-color: black;
+    -fx-border-radius: 5px;
+    -fx-padding: 5px 10px;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: transparent;
+}

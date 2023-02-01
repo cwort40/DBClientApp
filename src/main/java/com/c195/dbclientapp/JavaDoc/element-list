@@ -1,0 +1,6 @@
+module:com.c195.dbclientapp
+com.c195.dbclientapp
+com.c195.dbclientapp.database
+com.c195.dbclientapp.helper
+com.c195.dbclientapp.i18n
+com.c195.dbclientapp.model
