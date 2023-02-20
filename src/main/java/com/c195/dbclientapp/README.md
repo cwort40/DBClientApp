@@ -6,12 +6,6 @@ generating reports. It also includes classes for handling user login and user ma
 The application allows users to view, add, and delete customer and appointment
 information, and to generate reports on various aspects of the scheduling data.
 
-## Author information
-<b>Author:</b> Christian Worthen <br>
-<b>Email:</b> cwort40@wgu.edu <br>
-<b>Application Version:</b> 1.0 <br>
-<b>Date:</b> 01/02/2023
-
 ## Version Information
 <b>IDE:</b> Intellij Community Edition 2022.2.3 <br>
 <b>JDK:</b> OpenJDK 19 <br>
