@@ -4,6 +4,7 @@ import com.c195.dbclientapp.database.AppointmentAccess;
 import com.c195.dbclientapp.database.ContactAccess;
 import com.c195.dbclientapp.database.CustomerAccess;
 import com.c195.dbclientapp.database.UserAccess;
+import com.c195.dbclientapp.helper.ValidateControl;
 import com.c195.dbclientapp.model.Appointment;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -11,6 +12,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Control;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.TextField;
 
@@ -37,6 +39,9 @@ public class AddAppointmentController implements Initializable {
 
     // Initialize idTotal to be used for generating uniqueId
     private static int idTotal = 1;
+
+    // for validation
+    ValidateControl vc = new ValidateControl();
 
     //Declare FXML Controls
     @FXML
@@ -103,58 +108,22 @@ public class AddAppointmentController implements Initializable {
     @FXML
     void OnActionAdd(ActionEvent event) throws SQLException, IOException {
 
-        // Declare variables used in checking errors
-        boolean inputError = false;
-        String errorMessage = "";
-
-        // Check that all required fields are not empty
-        if (titleTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Title field must be completed.\n";
-        }
-        if (descriptionTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Description field must be completed.\n";
-        }
-        if (locationTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Location field must be completed.\n";
-        }
-        if (typeTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Type field must be completed.\n";
-        }
-        if (startTimeComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Start time must be selected.\n";
-        }
-        if (endTimeComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "End time must be selected.\n";
-        }
-        if (startDatePicker.getValue() == null) {
-            inputError = true;
-            errorMessage += "Start date must be selected.\n";
-        }
-        if (endDatePicker.getValue() == null) {
-            inputError = true;
-            errorMessage += "End date must be selected.\n";
-        }
-        if (customerIdComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Customer ID must be selected.\n";
-        }
-        if (contactIdComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Contact ID must be selected.\n";
-        }
-        if (userIdComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "User ID must be selected.\n";
-        }
+        // Validate required fields
+        vc.validateControl(titleTxt, "Title field must be completed.");
+        vc.validateControl(descriptionTxt, "Description field must be completed.");
+        vc.validateControl(locationTxt, "Location field must be completed.");
+        vc.validateControl(typeTxt, "Type field must be completed.");
+        vc.validateControl(startTimeComboBox, "Start time must be selected.");
+        vc.validateControl(endTimeComboBox, "End time must be selected.");
+        vc.validateControl(startDatePicker, "Start date must be selected.");
+        vc.validateControl(endDatePicker, "End date must be selected.");
+        vc.validateControl(customerIdComboBox, "Customer ID must be selected.");
+        vc.validateControl(contactIdComboBox, "Contact ID must be selected.");
+        vc.validateControl(userIdComboBox, "User ID must be selected.");
 
         // Display error(s)
-        if (inputError) {
+        if (vc.isInputError()) {
+            String errorMessage = String.join("\n", vc.getErrorMessages());
             DialogBox.displayAlert("Error", errorMessage);
             return;
         }
@@ -322,4 +291,5 @@ public class AddAppointmentController implements Initializable {
         startTimeComboBox.setItems(hours);
         endTimeComboBox.setItems(hours);
     }
+
 }
