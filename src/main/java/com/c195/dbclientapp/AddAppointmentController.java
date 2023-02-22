@@ -121,18 +121,27 @@ public class AddAppointmentController implements Initializable {
         vc.validateControl(contactIdComboBox, "Contact ID must be selected.");
         vc.validateControl(userIdComboBox, "User ID must be selected.");
 
+        // Check that start time is before end time
+        vc.validateTimeSelection(startTimeComboBox.getSelectionModel().getSelectedItem(),
+                endTimeComboBox.getSelectionModel().getSelectedItem());
+
+        // get the selected start time and end time as strings
+        String startTime = startTimeComboBox.getSelectionModel().getSelectedItem();
+        String endTime = endTimeComboBox.getSelectionModel().getSelectedItem();
+
+        // get the selected start and end dates
+        LocalDate startDate = startDatePicker.getValue();
+        LocalDate endDate = endDatePicker.getValue();
+
+        // call the validateBusinessHours method to validate the times
+        vc.validateBusinessHours(startTime, endTime, startDate, endDate);
+
         // Display error(s)
         if (vc.isInputError()) {
             String errorMessage = String.join("\n", vc.getErrorMessages());
             DialogBox.displayAlert("Error", errorMessage);
-            return;
-        }
-
-        // Check that start time is before end time
-        int startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
-        int endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
-        if (startHour >= endHour) {
-            DialogBox.displayAlert("Error", "Start time must be before end time");
+            vc.setInputError(false);
+            vc.clearErrorMessage();
             return;
         }
 
@@ -148,42 +157,42 @@ public class AddAppointmentController implements Initializable {
         String type = typeTxt.getText();
 
         // Get hours
-        startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
-        endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
-
-        // Get local dates
-        LocalDate startDate = startDatePicker.getValue();
-        LocalDate endDate = endDatePicker.getValue();
-
+        int startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
+        int endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
+//
+//        // Get local dates
+//        LocalDate startDate = startDatePicker.getValue();
+//        LocalDate endDate = endDatePicker.getValue();
+//
         // Combine dates & hours
         LocalDateTime start = LocalDateTime.of(startDate, LocalTime.of(startHour, 0));
         LocalDateTime end = LocalDateTime.of(endDate, LocalTime.of(endHour, 0));
-
+//
         // Convert start and end times to UTC and keep them as LocalDateTime objects
         LocalDateTime startUTC = start.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
         LocalDateTime endUTC = end.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
-
-        // Define the business hours at 8:00 a.m. to 10:00 p.m. EST
-        int startHourCheck = 8;
-        int endHourCheck = 22;
-
-        // Check if the start time is outside the business hours
-        if (startUTC.getHour() < startHourCheck || startUTC.getHour() >= endHourCheck) {
-            // Display an error message
-            DialogBox.displayAlert("Error",
-                    "Start time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
-            return;
-        }
-
-        // Check if the end time is outside the business hours
-        if (endUTC.getHour() < startHourCheck || endUTC.getHour() > endHourCheck) {
-            // Display an error message
-            DialogBox.displayAlert("Error",
-                    "End time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
-            return;
-        }
+//
+//        // Define the business hours at 8:00 a.m. to 10:00 p.m. EST
+//        int startHourCheck = 8;
+//        int endHourCheck = 22;
+//
+//        // Check if the start time is outside the business hours
+//        if (startUTC.getHour() < startHourCheck || startUTC.getHour() >= endHourCheck) {
+//            // Display an error message
+//            DialogBox.displayAlert("Error",
+//                    "Start time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
+//            return;
+//        }
+//
+//        // Check if the end time is outside the business hours
+//        if (endUTC.getHour() < startHourCheck || endUTC.getHour() > endHourCheck) {
+//            // Display an error message
+//            DialogBox.displayAlert("Error",
+//                    "End time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
+//            return;
+//        }
 
         // Select customer id
         int customer = customerIdComboBox.getSelectionModel().getSelectedItem();

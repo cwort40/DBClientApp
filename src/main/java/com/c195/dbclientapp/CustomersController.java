@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ResourceBundle;
+import java.util.stream.Collectors;
 
 import static com.c195.dbclientapp.DialogBox.displayAlert;
 import static com.c195.dbclientapp.DialogBox.displayConfirmation;
@@ -56,17 +57,6 @@ public class CustomersController implements Initializable {
     private TableColumn<Customer, Integer> postalCodeCol;
 
     /**
-     * Event handler for the Return button. When the Return button is clicked, the scene is changed to the main menu
-     * scene.
-     * @param event the action event that triggered the handler
-     * @throws IOException if there is an error loading the main menu scene
-     */
-    @FXML
-    void OnActionReturn(ActionEvent event) throws java.io.IOException {
-        LoadSceneHelper.loadScene(event, "mainMenu.fxml", "Main Menu");
-    }
-
-    /**
      * Event handler for the Add button. When the Add button is clicked, the scene is changed to the Add Customer
      * scene.
      * @param event the action event that triggered the handler
@@ -75,6 +65,17 @@ public class CustomersController implements Initializable {
     @FXML
     void OnActionAdd(ActionEvent event) throws java.io.IOException {
         LoadSceneHelper.loadScene(event, "addCustomer.fxml", "Add Customer");
+    }
+
+    /**
+     * Event handler for the Return button. When the Return button is clicked, the scene is changed to the main menu
+     * scene.
+     * @param event the action event that triggered the handler
+     * @throws IOException if there is an error loading the main menu scene
+     */
+    @FXML
+    void OnActionReturn(ActionEvent event) throws java.io.IOException {
+        LoadSceneHelper.loadScene(event, "mainMenu.fxml", "Main Menu");
     }
 
     /**
@@ -88,26 +89,24 @@ public class CustomersController implements Initializable {
      */
     @FXML
     void OnActionUpdate(ActionEvent event) throws java.io.IOException, SQLException {
-
-        // Send selected part to updateAppointmentController
-        FXMLLoader loader = new FXMLLoader();
-        loader.setLocation(getClass().getResource("updateCustomer.fxml"));
-        loader.load();
-        FirstLevelDivision divisionName = customerTableView.getSelectionModel().getSelectedItem().getDivision();
-        Country countryName = customerTableView.getSelectionModel().getSelectedItem().getCountry();
-        UpdateCustomerController UCustomerController = loader.getController();
-        UCustomerController.sendCustomer(customerTableView.getSelectionModel().getSelectedItem().getCustomer(),
-                divisionName, countryName);
-
-        // If customer is selected, takes user to update customer scene
-        Stage stage;
-        if (!(customerTableView.getSelectionModel().getSelectedItem() == null)) {
-            stage = (Stage)((Button)event.getSource()).getScene().getWindow();
-            Parent scene = loader.getRoot();
-            stage.setTitle("Update Customer");
-            stage.setScene(new Scene(scene));
-            stage.show();
+        if (customerTableView.getSelectionModel().getSelectedItem() == null) {
+            displayAlert("Error", "No customer selected.");
+            return;
         }
+        // Load the update customer scene
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("updateCustomer.fxml"));
+        Parent root = loader.load();
+        UpdateCustomerController controller = loader.getController();
+        controller.sendCustomer(
+                customerTableView.getSelectionModel().getSelectedItem().getCustomer(),
+                customerTableView.getSelectionModel().getSelectedItem().getDivision(),
+                customerTableView.getSelectionModel().getSelectedItem().getCountry()
+        );
+        // Set up the stage and scene for the update customer scene
+        Stage stage = (Stage)((Button)event.getSource()).getScene().getWindow();;
+        stage.setTitle("Update Customer");
+        stage.setScene(new Scene(root));
+        stage.show();
     }
 
     /**
@@ -120,57 +119,51 @@ public class CustomersController implements Initializable {
      */
     @FXML
     void OnActionDelete(ActionEvent event) throws java.io.IOException {
-
         // Get the selected customer from the table view
-        ObservableList<CustomerWithDivision> customerWithDivisions = FXCollections.observableArrayList();
-        Customer selectedCustomer = customerTableView.getSelectionModel().getSelectedItem().getCustomer();
-
-        // If a customer is selected
-        if (selectedCustomer != null) {
-            // Confirm the deletion with the user
-            boolean confirm = displayConfirmation("Delete Customer",
-                    "Are you sure you want to delete the selected customer and all associated appointments?");
-            if (confirm) {
-                try {
-                    // Delete the customer and all of their appointments
-                    CustomerAccess.deleteCustomer(selectedCustomer.getCustomerId());
-
-                    // Display alert
-                    displayAlert("Success!", "Customer deleted");
-
-                    // Get the updated list of customers
-                    ObservableList<Customer> customers = CustomerAccess.getAllCustomers();
-
-                    // Get the updated list of divisions
-                    ObservableList<FirstLevelDivision> divisions = FirstLevelDivisionAccess.getAllDivisions();
-
-                    // Get the updated list of countries
-                    ObservableList<Country> countries = CountryAccess.getAllCountries();
-
-                    // Create a CustomerWithDivision object for each customer and add it to the list
-                    for (Customer customer : customers) {
-                        FirstLevelDivision division = null;
-                        Country country = null;
-                        try {
-                            division = FirstLevelDivisionAccess.getDivisionById(customer.getDivisionId());
-                            assert division != null;
-                            country = CountryAccess.getCountryById(division.getCountryId());
-                        } catch (SQLException e) {
-                            throw new RuntimeException(e);
-                        }
-                        customerWithDivisions.add(new CustomerWithDivision(customer, division, country));
-                    }
-
-                    // Update the table with the updated list of CustomerWithDivision objects
-                    customerTableView.setItems(customerWithDivisions);
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        } else {
+        CustomerWithDivision selectedCustomerWithDivision = customerTableView.getSelectionModel().getSelectedItem();
+        if (selectedCustomerWithDivision == null) {
             // Show an error message if no customer is selected
             displayAlert("Error", "No customer selected.");
+            return;
         }
+        Customer selectedCustomer = selectedCustomerWithDivision.getCustomer();
+
+        // Confirm the deletion with the user
+        boolean confirm = displayConfirmation("Delete Customer", "Do you want to delete the selected customer and all associated data?");
+        if (!confirm) {
+            return;
+        }
+
+        try {
+            // Delete the customer and all of their appointments
+            CustomerAccess.deleteCustomer(selectedCustomer.getCustomerId());
+            // Display alert
+            displayAlert("Success!", "Customer deleted");
+            // Refresh the customer table view
+            refreshCustomerTableView();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void refreshCustomerTableView() throws SQLException {
+        // Get the updated list of customers
+        ObservableList<Customer> customers = CustomerAccess.getAllCustomers();
+        // Get the updated list of divisions
+        ObservableList<FirstLevelDivision> divisions = FirstLevelDivisionAccess.getAllDivisions();
+        // Get the updated list of countries
+        ObservableList<Country> countries = CountryAccess.getAllCountries();
+        // Create a CustomerWithDivision object for each customer and add it to the list
+        ObservableList<CustomerWithDivision> customerWithDivisions = FXCollections.observableArrayList();
+
+        for (Customer customer : customers) {
+            FirstLevelDivision division = FirstLevelDivisionAccess.getDivisionById(customer.getDivisionId());
+            assert division != null;
+            Country country = CountryAccess.getCountryById(division.getCountryId());
+            customerWithDivisions.add(new CustomerWithDivision(customer, division, country));
+        }
+        // Update the table with the updated list of CustomerWithDivision objects
+        customerTableView.setItems(customerWithDivisions);
     }
 
 
@@ -185,46 +178,39 @@ public class CustomersController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-
-        // Initialize lists of items needed to populate table view
-        ObservableList<Customer> customers;
-        ObservableList<FirstLevelDivision> divisions;
-        ObservableList<Country> countries;
-        ObservableList<CustomerWithDivision> customerWithDivisions = FXCollections.observableArrayList();
-
-        // Populate lists with desired values
         try {
-            customers = CustomerAccess.getAllCustomers();
-            divisions = FirstLevelDivisionAccess.getAllDivisions();
-            countries = CountryAccess.getAllCountries();
+            // Initialize lists of items needed to populate table view
+            ObservableList<Customer> customers = CustomerAccess.getAllCustomers();
+            ObservableList<FirstLevelDivision> divisions = FirstLevelDivisionAccess.getAllDivisions();
+            ObservableList<Country> countries = CountryAccess.getAllCountries();
+
+            // Create a CustomerWithDivision object for each customer and add it to the list
+            ObservableList<CustomerWithDivision> customerWithDivisions = customers.stream()
+                    .map(customer -> {
+                        FirstLevelDivision division;
+                        Country country;
+                        try {
+                            division = FirstLevelDivisionAccess.getDivisionById(customer.getDivisionId());
+                            assert division != null;
+                            country = CountryAccess.getCountryById(division.getCountryId());
+                        } catch (SQLException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return new CustomerWithDivision(customer, division, country);
+                    })
+                    .collect(Collectors.toCollection(FXCollections::observableArrayList));
+
+            // Populate table with customerWithDivisions list
+            customerTableView.setItems(customerWithDivisions);
+            idCol.setCellValueFactory(new PropertyValueFactory<>("customerId"));
+            nameCol.setCellValueFactory(new PropertyValueFactory<>("customerName"));
+            addressCol.setCellValueFactory(new PropertyValueFactory<>("address"));
+            postalCodeCol.setCellValueFactory(new PropertyValueFactory<>("postalCode"));
+            phoneCol.setCellValueFactory(new PropertyValueFactory<>("phone"));
+            divisionCol.setCellValueFactory(new PropertyValueFactory<>("divisionName"));
+            countryCol.setCellValueFactory(new PropertyValueFactory<>("countryName"));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
-        // Create a CustomerWithDivision object for each customer and add it to the list
-        for (Customer customer : customers) {
-            FirstLevelDivision division = null;
-            Country country = null;
-            try {
-                division = FirstLevelDivisionAccess.getDivisionById(customer.getDivisionId());
-                assert division != null;
-                country = CountryAccess.getCountryById(division.getCountryId());
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-            customerWithDivisions.add(new CustomerWithDivision(customer, division, country));
-        }
-
-        // Populate table with customerWithDivisions list
-        customerTableView.setItems(customerWithDivisions);
-        idCol.setCellValueFactory(new PropertyValueFactory<>("customerId"));
-        nameCol.setCellValueFactory(new PropertyValueFactory<>("customerName"));
-        addressCol.setCellValueFactory(new PropertyValueFactory<>("address"));
-        postalCodeCol.setCellValueFactory(new PropertyValueFactory<>("postalCode"));
-        phoneCol.setCellValueFactory(new PropertyValueFactory<>("phone"));
-        divisionCol.setCellValueFactory(new PropertyValueFactory<>("divisionName"));
-        countryCol.setCellValueFactory(new PropertyValueFactory<>("countryName"));
     }
 }
-
-

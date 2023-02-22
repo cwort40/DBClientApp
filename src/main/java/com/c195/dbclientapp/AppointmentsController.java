@@ -2,6 +2,7 @@ package com.c195.dbclientapp;
 
 import com.c195.dbclientapp.database.AppointmentAccess;
 import com.c195.dbclientapp.model.Appointment;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -65,18 +66,6 @@ public class AppointmentsController implements Initializable {
 
     /**
      *
-     * Event handler for the Return button. When the Return button is clicked, the scene is changed to the main menu
-     * scene.
-     * @param event the action event that triggered the handler
-     * @throws IOException if there is an error loading the main menu scene
-     */
-    @FXML
-    void OnActionReturn(ActionEvent event) throws java.io.IOException {
-        LoadSceneHelper.loadScene(event, "mainMenu.fxml", "Main Menu");
-    }
-
-    /**
-     *
      * Event handler for the Add button. When the Add button is clicked, the scene is changed to the Add Appointment
      * scene.
      * @param event the action event that triggered the handler
@@ -89,6 +78,18 @@ public class AppointmentsController implements Initializable {
 
     /**
      *
+     * Event handler for the Return button. When the Return button is clicked, the scene is changed to the main menu
+     * scene.
+     * @param event the action event that triggered the handler
+     * @throws IOException if there is an error loading the main menu scene
+     */
+    @FXML
+    void OnActionReturn(ActionEvent event) throws java.io.IOException {
+        LoadSceneHelper.loadScene(event, "mainMenu.fxml", "Main Menu");
+    }
+
+    /**
+     *
      * Event handler for the Update button. When the Update button is clicked, this method sends the selected appointment
      * to the UpdateAppointmentController and loads the update appointment scene. If no appointment is selected, it does
      * nothing.
@@ -97,21 +98,19 @@ public class AppointmentsController implements Initializable {
      */
     @FXML
     void OnActionUpdate(ActionEvent event) throws java.io.IOException {
-
-        // Send selected part to updateAppointmentController
-        FXMLLoader loader = new FXMLLoader();
-        loader.setLocation(getClass().getResource("updateAppointment.fxml"));
-        loader.load();
-        UpdateAppointmentController UAppointmentController = loader.getController();
-        UAppointmentController.sendAppointment(appointmentTableView.getSelectionModel().getSelectedItem());
-
         // Load update controller if an appointment is selected
-        Stage stage;
-        if (!(appointmentTableView.getSelectionModel().getSelectedItem() == null)) {
-            stage = (Stage)((Button)event.getSource()).getScene().getWindow();
-            Parent scene = loader.getRoot();
+        Appointment selectedAppointment = appointmentTableView.getSelectionModel().getSelectedItem();
+        if (selectedAppointment != null) {
+            // Send selected part to UpdateAppointmentController
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("updateAppointment.fxml"));
+            Parent root = loader.load();
+            UpdateAppointmentController UAppointmentController = loader.getController();
+            UAppointmentController.sendAppointment(selectedAppointment);
+
+            // Set the scene for the update appointment dialog
+            Stage stage = (Stage)((Button)event.getSource()).getScene().getWindow();
             stage.setTitle("Update Appointment");
-            stage.setScene(new Scene(scene));
+            stage.setScene(new Scene(root));
             stage.show();
         }
     }
@@ -127,36 +126,25 @@ public class AppointmentsController implements Initializable {
      */
     @FXML
     void OnActionCancel(ActionEvent event) throws java.io.IOException {
-
-        // Get the selected appointment from the table view
         Appointment selectedAppointment = appointmentTableView.getSelectionModel().getSelectedItem();
-
-        // If an appointment is selected
-        if (selectedAppointment != null) {
-
-            // Confirm the deletion with the user
-            boolean confirm = displayConfirmation("Cancel Appointment",
-                    "Are you sure you want to cancel the selected appointment?");
-            if (confirm) {
-
-                // Delete the appointment from the database
-                try {
-                    AppointmentAccess.deleteAppointment(selectedAppointment.getAppointmentId());
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-
-                // Remove the appointment from the table view
-                appointmentTableView.getItems().remove(selectedAppointment);
-                DialogBox.displayAlert("Confirmation",
-                        selectedAppointment.getTitle() + " of type " + selectedAppointment.getType()
-                                + " has been cancelled.");
-            }
-        } else {
-
-            // Show an error message if no appointment is selected
+        if (selectedAppointment == null) {
             displayAlert("Error", "No appointment selected.");
+            return;
         }
+
+        boolean confirm = displayConfirmation("Cancel Appointment", "Are you sure you want to cancel the selected appointment?");
+        if (!confirm) {
+            return;
+        }
+
+        try {
+            AppointmentAccess.deleteAppointment(selectedAppointment.getAppointmentId());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        appointmentTableView.getItems().remove(selectedAppointment);
+        DialogBox.displayAlert("Confirmation", selectedAppointment.getTitle() + " of type " + selectedAppointment.getType() + " has been cancelled.");
     }
 
     /**
@@ -169,11 +157,10 @@ public class AppointmentsController implements Initializable {
      */
     @FXML
     void allRadioButton(ActionEvent event) throws SQLException {
-
         // Loads table view with all appointments
         if (allRadioButton.isSelected()) {
-            ObservableList<Appointment> appointmentList = AppointmentAccess.getAllAppointments();
-            appointmentTableView.setItems(appointmentList);
+            ObservableList<Appointment> apptList = AppointmentAccess.getAllAppointments();
+            appointmentTableView.setItems(apptList);
 
         }
     }
@@ -188,11 +175,10 @@ public class AppointmentsController implements Initializable {
      */
     @FXML
     void monthRadioButton(ActionEvent event) throws SQLException {
-
         // Loads table view with desired appointments
         if (monthRadioButton.isSelected()) {
-            ObservableList<Appointment> appointmentList = AppointmentAccess.getAllAppointmentsByMonth();
-            appointmentTableView.setItems(appointmentList);
+            ObservableList<Appointment> apptList = AppointmentAccess.getAllAppointmentsByMonth();
+            appointmentTableView.setItems(apptList);
         }
     }
 
@@ -206,11 +192,10 @@ public class AppointmentsController implements Initializable {
      */
     @FXML
     void weekRadioButton(ActionEvent event) throws SQLException {
-
         // Loads table view with desired appointments
         if (weekRadioButton.isSelected()) {
-            ObservableList<Appointment> appointmentList = AppointmentAccess.getAllAppointmentsByWeek();
-            appointmentTableView.setItems(appointmentList);
+            ObservableList<Appointment> apptList = AppointmentAccess.getAllAppointmentsByWeek();
+            appointmentTableView.setItems(apptList);
         }
     }
 
@@ -224,26 +209,26 @@ public class AppointmentsController implements Initializable {
      */
     @Override
     public void initialize (URL url, ResourceBundle resourceBundle) {
-
-        // Populate the observable list with the desired values
-        ObservableList<Appointment> appointments;
         try {
-            appointments = AppointmentAccess.getAllAppointments();
+            // Retrieve appointments from the database
+            ObservableList<Appointment> appointments = AppointmentAccess.getAllAppointments();
+
+            // Set up table columns
+            idCol.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
+            titleCol.setCellValueFactory(new PropertyValueFactory<>("title"));
+            descriptionCol.setCellValueFactory(new PropertyValueFactory<>("description"));
+            locationCol.setCellValueFactory(new PropertyValueFactory<>("location"));
+            typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+            startCol.setCellValueFactory(new PropertyValueFactory<>("start"));
+            endCol.setCellValueFactory(new PropertyValueFactory<>("end"));
+            customerCol.setCellValueFactory(new PropertyValueFactory<>("customerId"));
+            userCol.setCellValueFactory(new PropertyValueFactory<>("userId"));
+            contactCol.setCellValueFactory(new PropertyValueFactory<>("contactId"));
+
+            // Set table data
+            appointmentTableView.setItems(FXCollections.observableList(appointments));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
-        // Set table view with list of appointments and populate each column
-        appointmentTableView.setItems(appointments);
-        idCol.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
-        titleCol.setCellValueFactory(new PropertyValueFactory<>("title"));
-        descriptionCol.setCellValueFactory(new PropertyValueFactory<>("description"));
-        locationCol.setCellValueFactory(new PropertyValueFactory<>("location"));
-        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
-        startCol.setCellValueFactory(new PropertyValueFactory<>("start"));
-        endCol.setCellValueFactory(new PropertyValueFactory<>("end"));
-        customerCol.setCellValueFactory(new PropertyValueFactory<>("customerId"));
-        userCol.setCellValueFactory(new PropertyValueFactory<>("userId"));
-        contactCol.setCellValueFactory(new PropertyValueFactory<>("contactId"));
     }
 }
