@@ -1,11 +1,15 @@
 package com.c195.dbclientapp;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+
 
 /**
  * This class represents the log activity of successful and failed logins in the system. It writes the log message to
@@ -21,17 +25,15 @@ public class LogActivity {
      */
     public static void logSuccessfulLogin(String username) {
         // Get the current date and time
-        LocalDateTime currentTime = LocalDateTime.now();
-        // Convert to UTC
-        currentTime = currentTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
-                .toLocalDateTime();
+        LocalDateTime currentTime = LocalDateTime.now(ZoneOffset.UTC);
         String dateTime = currentTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-
         // Write the log message to a file
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("login_activity.txt", true))) {
-            writer.write(dateTime + " - SUCCESSFUL login for user: " + username);
-            writer.newLine();
+        Path logFile = Paths.get("login_activity.txt");
+        String logMessage = String.format("%s - SUCCESSFUL login for user: %s%n", dateTime, username);
+
+        try {
+            Files.writeString(logFile, logMessage, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -44,15 +46,16 @@ public class LogActivity {
     public static void logFailedLogin(String username) {
         // Get the current date and time
         LocalDateTime currentTime = LocalDateTime.now();
-        // Convert to UTC
-        currentTime = currentTime.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
+        currentTime = currentTime.atZone(ZoneId.systemDefault())
+                .withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
         String dateTime = currentTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         // Write the log message to a file
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("login_activity.txt", true))) {
-            writer.write(dateTime + " - FAILED login for user: " + username);
-            writer.newLine();
+        Path logFile = Paths.get("login_activity.txt");
+        String logMessage = String.format("%s - FAILED login for user: %s%n", dateTime, username);
+        try {
+            Files.write(logFile, logMessage.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             e.printStackTrace();
         }

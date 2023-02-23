@@ -4,6 +4,7 @@ import com.c195.dbclientapp.database.AppointmentAccess;
 import com.c195.dbclientapp.database.ContactAccess;
 import com.c195.dbclientapp.database.CustomerAccess;
 import com.c195.dbclientapp.database.UserAccess;
+import com.c195.dbclientapp.helper.ValidateControl;
 import com.c195.dbclientapp.model.Appointment;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -31,6 +32,9 @@ public class UpdateAppointmentController implements Initializable {
 
     // Initialize an appointment object for use between methods
     Appointment selectedAppointment = null;
+
+    // Create instance of the ValidateControl class to use for appointment validation
+    ValidateControl vc = new ValidateControl();
 
     // Declare all the FXML controls
     @FXML
@@ -95,107 +99,72 @@ public class UpdateAppointmentController implements Initializable {
     @FXML
     void OnActionUpdate(ActionEvent event) throws SQLException, IOException {
 
-        // Declare variables used for checking errors
-        boolean inputError = false;
-        String errorMessage = "";
-
         // Assign the selectedAppointment object
         Appointment selectedAppointment = this.selectedAppointment;
 
-        // Check that all required fields are not empty
-        if (titleTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Title field must be completed.\n";
-        }
-        if (descriptionTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Description field must be completed.\n";
-        }
-        if (locationTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Location field must be completed.\n";
-        }
-        if (typeTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Type field must be completed.\n";
-        }
-        if (startTimeComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Start time must be selected.\n";
-        }
-        if (endTimeComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "End time must be selected.\n";
-        }
-        if (startDatePicker.getValue() == null) {
-            inputError = true;
-            errorMessage += "Start date must be selected.\n";
-        }
-        if (endDatePicker.getValue() == null) {
-            inputError = true;
-            errorMessage += "End date must be selected.\n";
-        }
-        if (customerIdComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Customer ID must be selected.\n";
-        }
-        if (contactIdComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Contact ID must be selected.\n";
-        }
-        if (userIdComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "User ID must be selected.\n";
-        }
+        // Validate required fields to ensure they are not empty
+        vc.validateNotEmpty(titleTxt, "Title field must be completed.");
+        vc.validateNotEmpty(descriptionTxt, "Description field must be completed.");
+        vc.validateNotEmpty(locationTxt, "Location field must be completed.");
+        vc.validateNotEmpty(typeTxt, "Type field must be completed.");
+        vc.validateNotEmpty(startTimeComboBox, "Start time must be selected.");
+        vc.validateNotEmpty(endTimeComboBox, "End time must be selected.");
+        vc.validateNotEmpty(startDatePicker, "Start date must be selected.");
+        vc.validateNotEmpty(endDatePicker, "End date must be selected.");
+        vc.validateNotEmpty(customerIdComboBox, "Customer ID must be selected.");
+        vc.validateNotEmpty(contactIdComboBox, "Contact ID must be selected.");
+        vc.validateNotEmpty(userIdComboBox, "User ID must be selected.");
 
-        // Print error message(s) if inputError is true
-        if (inputError) {
-            DialogBox.displayAlert("Error", errorMessage);
+        // Display error(s) if empty
+        if (vc.displayErrorAndReset(vc)) {
             return;
         }
 
-        // Check that start time is before end time
+        //combine start/end hours with dates into one LocalDateTime object
+        // get the selected start and end hours and check if they are null first
+        if (startTimeComboBox.getSelectionModel().isEmpty() ||
+                endTimeComboBox.getSelectionModel().isEmpty() ||
+                startDatePicker.getValue() == null ||
+                endDatePicker.getValue() == null) {
+            return;
+        }
+
         int startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
         int endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
-        if (startHour >= endHour) {
-            DialogBox.displayAlert("Error", "Start time must be before end time");
+
+        // get the selected start and end dates
+        LocalDate startDate = startDatePicker.getValue();
+        LocalDate endDate = endDatePicker.getValue();
+
+        // Combine them
+        LocalDateTime start = LocalDateTime.of(startDate, LocalTime.of(startHour, 0));
+        LocalDateTime end = LocalDateTime.of(endDate, LocalTime.of(endHour, 0));
+
+        // Convert start and end times to UTC standard
+        LocalDateTime startUTC = start.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
+                .toLocalDateTime();
+        LocalDateTime endUTC = end.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
+                .toLocalDateTime();
+
+        // Check that start date is before end date
+        vc.validateTimeSelection(startUTC, endUTC);
+        // call the validateBusinessHours method to validate the times
+        vc.validateBusinessHours(startUTC, endUTC);
+        // Display error(s) for any invalid times
+        if (vc.displayErrorAndReset(vc)) {
             return;
         }
 
         // Take in uniqueId
         int uniqueId = Integer.parseInt(id.getText());
 
-        //taking in all string text fields
+        // Taking in title, description, location, type, customer id, contact id and user id from UI
         String title = titleTxt.getText();
         String description = descriptionTxt.getText();
         String location = locationTxt.getText();
         String type = typeTxt.getText();
-
-        // Get hours
-        startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
-        endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
-
-        // Get local dates
-        LocalDate startDate = startDatePicker.getValue();
-        LocalDate endDate = endDatePicker.getValue();
-
-        // Combine dates & hours
-        LocalDateTime start = LocalDateTime.of(startDate, LocalTime.of(startHour, 0));
-        LocalDateTime end = LocalDateTime.of(endDate, LocalTime.of(endHour, 0));
-
-        // Convert start and end times to UTC and keep them as LocalDateTime objects
-        LocalDateTime startUTC = start.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
-                .toLocalDateTime();
-        LocalDateTime endUTC = end.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
-                .toLocalDateTime();
-
-        //select customer id
-        int customer = customerIdComboBox.getSelectionModel().getSelectedItem();
-
-        //select contact id
+        int customerId = customerIdComboBox.getSelectionModel().getSelectedItem();
         int contact = contactIdComboBox.getSelectionModel().getSelectedItem();
-
-        //select user id
         int user = userIdComboBox.getSelectionModel().getSelectedItem();
 
         // Get create date
@@ -212,37 +181,17 @@ public class UpdateAppointmentController implements Initializable {
         // Set last update
         LocalDateTime lastUpdate = LocalDateTime.now();
 
+        // Set last updated by
+        String lastUpdatedBy = LoginController.currentUser;
+
         // Convert last update to UTC and keep it as a LocalDateTime object
         LocalDateTime lastUpdateUTC = lastUpdate.atZone(ZoneId.systemDefault())
                 .withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
 
-        // Set last updated by
-        String lastUpdatedBy = LoginController.currentUser;
-
-        // Define the business hours at 8:00 a.m. to 10:00 p.m. EST
-        int startHourCheck = 8;
-        int endHourCheck = 22;
-
-        // Check if the start time is outside the business hours
-        if (startUTC.getHour() < startHourCheck || startUTC.getHour() >= endHourCheck) {
-            // Display an error message
-            DialogBox.displayAlert("Error",
-                    "Start time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
-            return;
-        }
-
-        // Check if the end time is outside the business hours
-        if (endUTC.getHour() < startHourCheck || endUTC.getHour() > endHourCheck) {
-            // Display an error message
-            DialogBox.displayAlert("Error",
-                    "End time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
-            return;
-        }
-
         // Check for overlapping appointments for the customer
         ObservableList<Appointment> customerAppointments = FXCollections
-                .observableArrayList(AppointmentAccess.getAppointmentsByCustomerId(customer));
+                .observableArrayList(AppointmentAccess.getAppointmentsByCustomerId(customerId));
 
         // Lambda expression for checking for overlapping appointments
         boolean hasOverlap = customerAppointments.stream()
@@ -269,7 +218,7 @@ public class UpdateAppointmentController implements Initializable {
                 createdBy,
                 lastUpdateUTC,
                 lastUpdatedBy,
-                customer,
+                customerId,
                 user,
                 contact
         );
@@ -309,11 +258,21 @@ public class UpdateAppointmentController implements Initializable {
             typeTxt.setText(selectedAppointment.getType());
             customerIdComboBox.setValue(selectedAppointment.getCustomerId());
             startDatePicker.setValue(selectedAppointment.getStart().toLocalDate());
-            startTimeComboBox.setValue(String.valueOf(selectedAppointment.getStart().getHour()));
             endDatePicker.setValue(selectedAppointment.getStart().toLocalDate());
-            endTimeComboBox.setValue(String.valueOf(selectedAppointment.getEnd().getHour()));
             contactIdComboBox.setValue(selectedAppointment.getContactId());
             userIdComboBox.setValue(selectedAppointment.getUserId());
+
+            // append a 0 before the single digit times, so they match with the combo box options
+            if (selectedAppointment.getStart().getHour() < 10) {
+                startTimeComboBox.setValue("0" + selectedAppointment.getStart().getHour());
+            } else {
+                startTimeComboBox.setValue(String.valueOf(selectedAppointment.getStart().getHour()));
+            }
+            if (selectedAppointment.getEnd().getHour() < 10) {
+                endTimeComboBox.setValue("0" + selectedAppointment.getEnd().getHour());
+            } else {
+                endTimeComboBox.setValue(String.valueOf(selectedAppointment.getEnd().getHour()));
+            }
 
             // Get the user's local time zone
             ZoneId localTimeZone = ZoneId.systemDefault();

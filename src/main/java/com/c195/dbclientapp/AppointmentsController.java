@@ -132,7 +132,8 @@ public class AppointmentsController implements Initializable {
             return;
         }
 
-        boolean confirm = displayConfirmation("Cancel Appointment", "Are you sure you want to cancel the selected appointment?");
+        boolean confirm = displayConfirmation("Cancel Appointment", "Are you sure you want to cancel" +
+                " the selected appointment?");
         if (!confirm) {
             return;
         }
@@ -144,7 +145,8 @@ public class AppointmentsController implements Initializable {
         }
 
         appointmentTableView.getItems().remove(selectedAppointment);
-        DialogBox.displayAlert("Confirmation", selectedAppointment.getTitle() + " of type " + selectedAppointment.getType() + " has been cancelled.");
+        DialogBox.displayAlert("Confirmation", selectedAppointment.getTitle() + " of type " +
+                selectedAppointment.getType() + " has been cancelled.");
     }
 
     /**

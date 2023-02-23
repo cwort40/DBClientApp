@@ -3,6 +3,7 @@ package com.c195.dbclientapp;
 import com.c195.dbclientapp.database.CountryAccess;
 import com.c195.dbclientapp.database.CustomerAccess;
 import com.c195.dbclientapp.database.FirstLevelDivisionAccess;
+import com.c195.dbclientapp.helper.ValidateControl;
 import com.c195.dbclientapp.model.Country;
 import com.c195.dbclientapp.model.Customer;
 import com.c195.dbclientapp.model.FirstLevelDivision;
@@ -13,7 +14,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
-import com.c195.dbclientapp.helper.ValidateControl;
+
 import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
@@ -21,7 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.ResourceBundle;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 /**
  *
@@ -34,14 +35,15 @@ public class AddCustomerController implements Initializable {
     // Initialize idTotal to be used for generating uniqueId
     private static int idTotal = 1;
 
+    // Create instance of ValidateControl class to use for customer validation
+    ValidateControl vc = new ValidateControl();
+
     // Declare observable list with all the division objects (used in two methods)
     ObservableList<FirstLevelDivision> divisionList =
             FXCollections.observableArrayList(FirstLevelDivisionAccess.getAllDivisions());
 
     // Declare observable list with all the country objects (used in two methods)
     ObservableList<Country> countryList = FXCollections.observableArrayList(CountryAccess.getAllCountries());
-
-    ValidateControl vc = new ValidateControl();
 
     // Declare all FXML controls
     @FXML
@@ -104,64 +106,75 @@ public class AddCustomerController implements Initializable {
      */
     @FXML
     void OnActionAdd(ActionEvent event) throws IOException, SQLException {
-        vc.validateControl(nameTxt, "Name field is required.");
-        vc.validateControl(addressTxt, "Address field is required.");
-        vc.validateControl(postalCodeTxt, "Postal field is required.");
-        vc.validateControl(phoneTxt, "Phone field is required.");
-        vc.validateControl(countryComboBox, "Country field is required.");
-        vc.validateControl(divisionComboBox, "Division field is required.");
 
-        if (vc.isInputError()) {
-            String errorMessage = String.join("\n", vc.getErrorMessages());
-            DialogBox.displayAlert("Error", errorMessage);
+        // Check if any field(s) is empty
+        vc.validateNotEmpty(nameTxt, "Name field must be completed.");
+        vc.validateNotEmpty(addressTxt, "Address field must be completed.");
+        vc.validateNotEmpty(postalCodeTxt, "Postal Code field must be completed.");
+        vc.validateNotEmpty(phoneTxt, "Phone Number field must be completed.");
+        vc.validateNotEmpty(countryComboBox, "Country must be selected.");
+        vc.validateNotEmpty(divisionComboBox, "Division must be selected.");
+
+        // Display error(s) if empty
+        if (vc.displayErrorAndReset(vc)) {
             return;
         }
 
         // Validate phone number format
-        if (!isPhoneNumberValid(phoneTxt.getText())) {
-            DialogBox.displayAlert("Error", "Phone must be in the format xxx-xxx-xxxx.");
+        if (!vc.isPhoneNumberValid(phoneTxt.getText())) {
+            vc.displayErrorAndReset(vc);
             return;
         }
 
-        // Create a new customer object
-        Customer newCustomer = createNewCustomer();
+        // Lambda expression to generate unique id
+        Supplier<Integer> getNewId = () -> idTotal++;
+        int uniqueId = getNewId.get();
+        idTxt.setText(String.valueOf(uniqueId));
 
-        // Add the customer to the database
+        // Taking in all string text fields
+        String name = nameTxt.getText();
+        String address = addressTxt.getText();
+        String postalCode = postalCodeTxt.getText();
+        String phone = phoneTxt.getText();
+
+        // Get the selected division name from the combo box
+        String selectedDivisionName = divisionComboBox.getSelectionModel().getSelectedItem();
+        int divisionId = FirstLevelDivisionAccess.getDivisionId(selectedDivisionName);
+
+        // Set create date
+        LocalDateTime createDate = LocalDateTime.now();
+
+        // Set user created by
+        String createdBy = LoginController.currentUser;
+
+        // Set last update
+        LocalDateTime lastUpdate = LocalDate.of( 1970 , Month.JANUARY , 1).atStartOfDay();
+
+        // Set last updated by
+        String lastUpdatedBy = "-1";
+
+        // Create newCustomer object
+        Customer newCustomer = new Customer(
+                uniqueId,
+                name,
+                address,
+                postalCode,
+                phone,
+                createDate,
+                createdBy,
+                lastUpdate,
+                lastUpdatedBy,
+                divisionId
+        );
+
+        // Add customer to database
         if (!CustomerAccess.addCustomer(newCustomer)) {
-            DialogBox.displayAlert("Error", "Failed to save customer information.");
+            DialogBox.displayAlert("Error", "Failed to add customer to database");
             return;
         }
 
         // Load the customers scene
         LoadSceneHelper.loadScene(event, "customers.fxml", "Customers");
-    }
-
-    private boolean isPhoneNumberValid(String phoneNumber) {
-        return phoneNumber.matches("^\\d{3}-\\d{3}-\\d{4}$");
-    }
-
-    private Customer createNewCustomer() {
-        try {
-            int uniqueId = generateUniqueId();
-            String name = nameTxt.getText();
-            String address = addressTxt.getText();
-            String postalCode = postalCodeTxt.getText();
-            String phone = phoneTxt.getText();
-            LocalDateTime createDate = LocalDateTime.now();
-            String createdBy = LoginController.currentUser;
-            LocalDateTime lastUpdate = LocalDate.of(1970, Month.JANUARY, 1).atStartOfDay();
-            String lastUpdatedBy = "-1";
-            String selectedDivisionName = divisionComboBox.getSelectionModel().getSelectedItem();
-            int divisionId = FirstLevelDivisionAccess.getDivisionId(selectedDivisionName);
-            return new Customer(uniqueId, name, address, postalCode, phone, createDate, createdBy, lastUpdate, lastUpdatedBy, divisionId);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    private int generateUniqueId() {
-        return idTotal++;
     }
 
     /**
@@ -172,24 +185,41 @@ public class AddCustomerController implements Initializable {
      */
     @FXML
     void OnActionCountrySelected(ActionEvent event) {
-        String selectedCountry = countryComboBox.getSelectionModel().getSelectedItem();
-        if (selectedCountry != null) {
-            divisionComboBox.getItems().clear(); // Clear previous items
 
-            int countryId;
-            switch (selectedCountry) {
-                case "U.S" -> countryId = 1;
-                case "UK" -> countryId = 2;
-                case "Canada" -> countryId = 3;
-                default -> {
-                    return; // Do nothing for other countries
+        // Checks for US
+        if (!(countryComboBox.getSelectionModel().isEmpty())) {
+            ObservableList<String> divisionNameList = FXCollections.observableArrayList();
+            if (countryComboBox.getSelectionModel().getSelectedItem().equals("U.S")) {
+                for (FirstLevelDivision division : divisionList) {
+                    if (division.getCountryId() == 1)
+                        divisionNameList.add(division.getDivision());
                 }
+
+                // Set combo box with US states
+                divisionComboBox.setItems(divisionNameList);
             }
 
-            divisionList.stream()
-                    .filter(division -> division.getCountryId() == countryId)
-                    .map(FirstLevelDivision::getDivision)
-                    .forEach(divisionComboBox.getItems()::add);
+            // Checks for UK
+            if (countryComboBox.getSelectionModel().getSelectedItem().equals("UK")) {
+                for (FirstLevelDivision division : divisionList) {
+                    if (division.getCountryId() == 2)
+                        divisionNameList.add(division.getDivision());
+                }
+
+                // Set combo box with UK divisions
+                divisionComboBox.setItems(divisionNameList);
+            }
+
+            // Checks for Canada
+            if (countryComboBox.getSelectionModel().getSelectedItem().equals("Canada")) {
+                for (FirstLevelDivision division : divisionList) {
+                    if (division.getCountryId() == 3)
+                        divisionNameList.add(division.getDivision());
+                }
+
+                // Set combo box with Canada divisions
+                divisionComboBox.setItems(divisionNameList);
+            }
         }
     }
 
@@ -203,23 +233,22 @@ public class AddCustomerController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        setDivisionComboBoxItems();
-        setCountryComboBoxItems();
-    }
 
-    private void setDivisionComboBoxItems() {
+        // Populate the observable list with the desired values
         ObservableList<String> divisionNameList = FXCollections.observableArrayList();
         for (FirstLevelDivision division : divisionList) {
             divisionNameList.add(division.getDivision());
         }
-        divisionComboBox.setItems(divisionNameList);
-    }
 
-    private void setCountryComboBoxItems() {
+        // Populate the observable list with the desired values
         ObservableList<String> countryNameList = FXCollections.observableArrayList();
         for (Country country : countryList) {
             countryNameList.add(country.getCountry());
+
         }
+
+        // Set the combo boxes' items after the combo boxes have been added to the scene
+        divisionComboBox.setItems(divisionNameList);
         countryComboBox.setItems(countryNameList);
     }
 }

@@ -12,7 +12,6 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Control;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.TextField;
 
@@ -40,7 +39,7 @@ public class AddAppointmentController implements Initializable {
     // Initialize idTotal to be used for generating uniqueId
     private static int idTotal = 1;
 
-    // for validation
+    // Create instance of the ValidateControl class to use for appointment validation
     ValidateControl vc = new ValidateControl();
 
     //Declare FXML Controls
@@ -107,128 +106,94 @@ public class AddAppointmentController implements Initializable {
      */
     @FXML
     void OnActionAdd(ActionEvent event) throws SQLException, IOException {
+        // Validate required fields to ensure they are not empty
+        vc.validateNotEmpty(titleTxt, "Title field must be completed.");
+        vc.validateNotEmpty(descriptionTxt, "Description field must be completed.");
+        vc.validateNotEmpty(locationTxt, "Location field must be completed.");
+        vc.validateNotEmpty(typeTxt, "Type field must be completed.");
+        vc.validateNotEmpty(startTimeComboBox, "Start time must be selected.");
+        vc.validateNotEmpty(endTimeComboBox, "End time must be selected.");
+        vc.validateNotEmpty(startDatePicker, "Start date must be selected.");
+        vc.validateNotEmpty(endDatePicker, "End date must be selected.");
+        vc.validateNotEmpty(customerIdComboBox, "Customer ID must be selected.");
+        vc.validateNotEmpty(contactIdComboBox, "Contact ID must be selected.");
+        vc.validateNotEmpty(userIdComboBox, "User ID must be selected.");
 
-        // Validate required fields
-        vc.validateControl(titleTxt, "Title field must be completed.");
-        vc.validateControl(descriptionTxt, "Description field must be completed.");
-        vc.validateControl(locationTxt, "Location field must be completed.");
-        vc.validateControl(typeTxt, "Type field must be completed.");
-        vc.validateControl(startTimeComboBox, "Start time must be selected.");
-        vc.validateControl(endTimeComboBox, "End time must be selected.");
-        vc.validateControl(startDatePicker, "Start date must be selected.");
-        vc.validateControl(endDatePicker, "End date must be selected.");
-        vc.validateControl(customerIdComboBox, "Customer ID must be selected.");
-        vc.validateControl(contactIdComboBox, "Contact ID must be selected.");
-        vc.validateControl(userIdComboBox, "User ID must be selected.");
+        // Display error(s) if empty
+        if (vc.displayErrorAndReset(vc)) {
+            return;
+        }
+        //combine start/end hours with dates into one LocalDateTime object
+        // get the selected start and end hours and check if they are null first
+        if (startTimeComboBox.getSelectionModel().isEmpty() ||
+                endTimeComboBox.getSelectionModel().isEmpty() ||
+                startDatePicker.getValue() == null ||
+                endDatePicker.getValue() == null) {
+            return;
+        }
 
-        // Check that start time is before end time
-        vc.validateTimeSelection(startTimeComboBox.getSelectionModel().getSelectedItem(),
-                endTimeComboBox.getSelectionModel().getSelectedItem());
-
-        // get the selected start time and end time as strings
-        String startTime = startTimeComboBox.getSelectionModel().getSelectedItem();
-        String endTime = endTimeComboBox.getSelectionModel().getSelectedItem();
+        int startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
+        int endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
 
         // get the selected start and end dates
         LocalDate startDate = startDatePicker.getValue();
         LocalDate endDate = endDatePicker.getValue();
 
-        // call the validateBusinessHours method to validate the times
-        vc.validateBusinessHours(startTime, endTime, startDate, endDate);
-
-        // Display error(s)
-        if (vc.isInputError()) {
-            String errorMessage = String.join("\n", vc.getErrorMessages());
-            DialogBox.displayAlert("Error", errorMessage);
-            vc.setInputError(false);
-            vc.clearErrorMessage();
-            return;
-        }
-
-        // Lambda expression to generate unique id
-        Supplier<Integer> getNewId = () -> idTotal++;
-        int uniqueId = getNewId.get();
-        id.setText(String.valueOf(uniqueId));
-
-        // Taking in all string text fields
-        String title = titleTxt.getText();
-        String description = descriptionTxt.getText();
-        String location = locationTxt.getText();
-        String type = typeTxt.getText();
-
-        // Get hours
-        int startHour = Integer.parseInt(startTimeComboBox.getSelectionModel().getSelectedItem());
-        int endHour = Integer.parseInt(endTimeComboBox.getSelectionModel().getSelectedItem());
-//
-//        // Get local dates
-//        LocalDate startDate = startDatePicker.getValue();
-//        LocalDate endDate = endDatePicker.getValue();
-//
-        // Combine dates & hours
+        // Combine them
         LocalDateTime start = LocalDateTime.of(startDate, LocalTime.of(startHour, 0));
         LocalDateTime end = LocalDateTime.of(endDate, LocalTime.of(endHour, 0));
-//
-        // Convert start and end times to UTC and keep them as LocalDateTime objects
+
+        // Convert start and end times to UTC standard
         LocalDateTime startUTC = start.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
         LocalDateTime endUTC = end.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
-//
-//        // Define the business hours at 8:00 a.m. to 10:00 p.m. EST
-//        int startHourCheck = 8;
-//        int endHourCheck = 22;
-//
-//        // Check if the start time is outside the business hours
-//        if (startUTC.getHour() < startHourCheck || startUTC.getHour() >= endHourCheck) {
-//            // Display an error message
-//            DialogBox.displayAlert("Error",
-//                    "Start time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
-//            return;
-//        }
-//
-//        // Check if the end time is outside the business hours
-//        if (endUTC.getHour() < startHourCheck || endUTC.getHour() > endHourCheck) {
-//            // Display an error message
-//            DialogBox.displayAlert("Error",
-//                    "End time must be within business hours (8:00 a.m. to 10:00 p.m. EST)");
-//            return;
-//        }
 
-        // Select customer id
-        int customer = customerIdComboBox.getSelectionModel().getSelectedItem();
+        // Check that start date is before end date
+        vc.validateTimeSelection(startUTC, endUTC);
+        // call the validateBusinessHours method to validate the times
+        vc.validateBusinessHours(startUTC, endUTC);
+        // Display error(s) for any invalid times
+        if (vc.displayErrorAndReset(vc)) {
+            return;
+        }
 
-        // Select contact id
+        // Lambda expression to generate unique id for the appointment
+        Supplier<Integer> getNewId = () -> idTotal++;
+        int uniqueId = getNewId.get();
+        id.setText(String.valueOf(uniqueId));
+
+        // Taking in title, description, location, type, customer id, contact id and user id from UI
+        String title = titleTxt.getText();
+        String description = descriptionTxt.getText();
+        String location = locationTxt.getText();
+        String type = typeTxt.getText();
+        int customerId = customerIdComboBox.getSelectionModel().getSelectedItem();
         int contact = contactIdComboBox.getSelectionModel().getSelectedItem();
-
-        // Select user id
         int user = userIdComboBox.getSelectionModel().getSelectedItem();
 
-        // Set create date
+        // Set create time and last updated time to current time in UTC
         LocalDateTime createDate = LocalDateTime.now().atZone(ZoneId.systemDefault())
                 .withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
-
-        // Set user created by
-        String createdBy = LoginController.currentUser;
-
-        // Set last update
         LocalDateTime lastUpdate = LocalDateTime.now().atZone(ZoneId.systemDefault())
                 .withZoneSameInstant(ZoneId.of("UTC"))
                 .toLocalDateTime();
 
-        // Set last updated by
+        // Set createdBy and lastUpdatedBy to current user
+        String createdBy = LoginController.currentUser;
         String lastUpdatedBy = LoginController.currentUser;
 
         // Check for overlapping appointments for the customer
         ObservableList<Appointment> customerAppointments = FXCollections
-                .observableArrayList(AppointmentAccess.getAppointmentsByCustomerId(customer));
+                .observableArrayList(AppointmentAccess.getAppointmentsByCustomerId(customerId));
 
         // Lambda expression for checking for overlapping appointments
         boolean hasOverlap = customerAppointments.stream()
                 .anyMatch(appointment ->
                         (start.isAfter(appointment.getStart()) && start.isBefore(appointment.getEnd())) ||
-                        (end.isAfter(appointment.getStart()) && end.isBefore(appointment.getEnd())) ||
-                        (start.isEqual(appointment.getStart()) && end.isEqual(appointment.getEnd())));
+                                (end.isAfter(appointment.getStart()) && end.isBefore(appointment.getEnd())) ||
+                                (start.isEqual(appointment.getStart()) && end.isEqual(appointment.getEnd())));
         if (hasOverlap) {
             DialogBox.displayAlert("Error",
                     "An appointment already exists at this time for this customer.");
@@ -248,17 +213,15 @@ public class AddAppointmentController implements Initializable {
                 createdBy,
                 lastUpdate,
                 lastUpdatedBy,
-                customer,
+                customerId,
                 user,
                 contact
         );
-
         // Add appointment to database
         if (!AppointmentAccess.addAppointment(newAppointment)) {
             DialogBox.displayAlert("Error", "Failed to add appointment to database");
             return;
         }
-
         // Load appointment screen
         LoadSceneHelper.loadScene(event, "appointments.fxml", "Appointments");
     }

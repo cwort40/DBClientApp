@@ -3,6 +3,7 @@ package com.c195.dbclientapp;
 import com.c195.dbclientapp.database.CountryAccess;
 import com.c195.dbclientapp.database.CustomerAccess;
 import com.c195.dbclientapp.database.FirstLevelDivisionAccess;
+import com.c195.dbclientapp.helper.ValidateControl;
 import com.c195.dbclientapp.model.Country;
 import com.c195.dbclientapp.model.Customer;
 import com.c195.dbclientapp.model.FirstLevelDivision;
@@ -32,6 +33,9 @@ import java.util.function.Function;
  * sends the data to the CustomerAccess class to update the database.
  */
 public class UpdateCustomerController implements Initializable {
+
+    // Create instance of ValidateControl class to use for customer validation
+    ValidateControl vc = new ValidateControl();
 
     // Initializing class members
     ObservableList<FirstLevelDivision> divisionList = null;
@@ -104,38 +108,22 @@ public class UpdateCustomerController implements Initializable {
     @FXML
     void OnActionUpdate(ActionEvent event) throws SQLException, IOException {
 
-        // Declare variables used for checking errors
-        boolean inputError = false;
-        String errorMessage = "";
+        // Check if any field(s) is empty
+        vc.validateNotEmpty(nameTxt, "Name field must be completed.");
+        vc.validateNotEmpty(addressTxt, "Address field must be completed.");
+        vc.validateNotEmpty(postalCodeTxt, "Postal Code field must be completed.");
+        vc.validateNotEmpty(phoneTxt, "Phone Number field must be completed.");
+        vc.validateNotEmpty(countryComboBox, "Country must be selected.");
+        vc.validateNotEmpty(divisionComboBox, "Division must be selected.");
 
-        // Assign selectedCustomer object
-        Customer selectedCustomer = this.selectedCustomer;
-
-        // Check that all required fields are not empty
-        if (nameTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Name field must be completed.\n";
-        }
-        if (addressTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Address field must be completed.\n";
-        }
-        if (postalCodeTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Postal code field must be completed.\n";
-        }
-        if (phoneTxt.getText().trim().isEmpty()) {
-            inputError = true;
-            errorMessage += "Phone field must be completed.\n";
-        }
-        if (divisionComboBox.getSelectionModel().isEmpty()) {
-            inputError = true;
-            errorMessage += "Division must be selected.\n";
+        // Display error(s) if empty
+        if (vc.displayErrorAndReset(vc)) {
+            return;
         }
 
-        // If inputError is true, display error message
-        if (inputError) {
-            DialogBox.displayAlert("Error", errorMessage);
+        // Validate phone number format
+        if (!vc.isPhoneNumberValid(phoneTxt.getText())) {
+            vc.displayErrorAndReset(vc);
             return;
         }
 
@@ -146,15 +134,6 @@ public class UpdateCustomerController implements Initializable {
         String postalCode = postalCodeTxt.getText();
         String phone = phoneTxt.getText();
 
-        // Lambda expression that ensures correct phone number format
-        Function<String, Boolean> isPhoneNumberValid = phoneNumber ->
-                phoneNumber.matches("^\\d{3}-\\d{3}-\\d{4}$");
-        if (!isPhoneNumberValid.apply(phone)) {
-            errorMessage += "Phone must be proper format\n";
-            DialogBox.displayAlert("Error", errorMessage);
-            return;
-        }
-
         // Get division ID
         int divisionId = -1;
         for (FirstLevelDivision division : divisionList) {
@@ -163,6 +142,9 @@ public class UpdateCustomerController implements Initializable {
                 break;
             }
         }
+
+        // Assign selectedCustomer object
+        Customer selectedCustomer = this.selectedCustomer;
 
         // Set create date
         LocalDateTime createDate = selectedCustomer.getCreateDate();

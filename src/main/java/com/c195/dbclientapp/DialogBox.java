@@ -3,6 +3,8 @@ package com.c195.dbclientapp;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 
+import java.util.Optional;
+
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 
 /**
@@ -34,15 +36,10 @@ public class DialogBox {
      * @return true if the user clicks the "Yes" button, false otherwise
      */
     public static boolean displayConfirmation(String title, String message) {
-        Alert alert = new Alert(CONFIRMATION);
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, message, ButtonType.YES, ButtonType.NO);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.setContentText(message);
-
-        ButtonType yesButton = new ButtonType("Yes");
-        ButtonType noButton = new ButtonType("No");
-        alert.getButtonTypes().setAll(yesButton, noButton);
-
-        return alert.showAndWait().filter(buttonType -> buttonType == yesButton).isPresent();
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == ButtonType.YES;
     }
 }

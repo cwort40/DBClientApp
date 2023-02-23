@@ -79,18 +79,38 @@ public class ReportsController implements Initializable {
      * @param resourceBundle the resource bundle containing localized strings
      */
     @Override
-    public void initialize (URL url, ResourceBundle resourceBundle) {
-
-        // Populate list with all appointments
-        ObservableList<Appointment> appointments;
+    public void initialize(URL url, ResourceBundle resourceBundle) {
         try {
-            appointments = AppointmentAccess.getAllAppointments();
+            // Populate appointment table view
+            ObservableList<Appointment> appointments = getAllAppointments();
+            setAppointmentTableColumns();
+            appointmentTableView.setItems(appointments);
+
+            // Populate type report table view
+            ObservableList<TypeReport> typeReports = getAllTypeReports();
+            setTypeReportTableColumns();
+            typeTableView.setItems(typeReports);
+
+            // Populate month report table view
+            ObservableList<MonthReport> monthReports = getAllMonthReports();
+            setMonthReportTableColumns();
+            monthTableView.setItems(monthReports);
+
+            // Populate customer report table view
+            ObservableList<CustomerReport> customerReports = getAllCustomerReports();
+            setCustomerReportTableColumns();
+            CustomerReportTableView.setItems(customerReports);
+
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
 
-        // Set values into table view
-        appointmentTableView.setItems(appointments);
+    private ObservableList<Appointment> getAllAppointments() throws SQLException {
+        return AppointmentAccess.getAllAppointments();
+    }
+
+    private void setAppointmentTableColumns() {
         appointmentIdCol.setCellValueFactory(new PropertyValueFactory<>("appointmentId"));
         titleCol.setCellValueFactory(new PropertyValueFactory<>("title"));
         descriptionCol.setCellValueFactory(new PropertyValueFactory<>("description"));
@@ -99,38 +119,31 @@ public class ReportsController implements Initializable {
         endCol.setCellValueFactory(new PropertyValueFactory<>("end"));
         customerIdCol.setCellValueFactory(new PropertyValueFactory<>("customerId"));
         contactIdCol.setCellValueFactory(new PropertyValueFactory<>("contactId"));
+    }
 
-        // Type report table
-        ObservableList<TypeReport> typeReports;
-        try {
-            typeReports = ReportAccess.getAllTypeReports();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        typeTableView.setItems(typeReports);
+    private ObservableList<TypeReport> getAllTypeReports() throws SQLException {
+        return ReportAccess.getAllTypeReports();
+    }
+
+    private void setTypeReportTableColumns() {
         typeReportCol.setCellValueFactory(new PropertyValueFactory<>("type"));
         totalTypeCol.setCellValueFactory(new PropertyValueFactory<>("total"));
+    }
 
-        // Month report table
-        ObservableList<MonthReport>  monthReports;
-        try {
-            monthReports = ReportAccess.getAllMonthReports();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        monthTableView.setItems(monthReports);
+    private ObservableList<MonthReport> getAllMonthReports() throws SQLException {
+        return ReportAccess.getAllMonthReports();
+    }
+
+    private void setMonthReportTableColumns() {
         monthCol.setCellValueFactory(new PropertyValueFactory<>("month"));
         totalMonthCol.setCellValueFactory(new PropertyValueFactory<>("total"));
+    }
 
-        // Customer by country table
-        ObservableList<CustomerReport> customerReports;
-        try {
-            customerReports = ReportAccess.getAllCustomerReports();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    private ObservableList<CustomerReport> getAllCustomerReports() throws SQLException {
+        return ReportAccess.getAllCustomerReports();
+    }
 
-        CustomerReportTableView.setItems(customerReports);
+    private void setCustomerReportTableColumns() {
         customerReportCol.setCellValueFactory(new PropertyValueFactory<>("customerId"));
         countryReportCol.setCellValueFactory(new PropertyValueFactory<>("countryId"));
     }
